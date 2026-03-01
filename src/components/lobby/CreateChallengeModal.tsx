@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "movement-design-system";
+import { Button } from "@moveindustries/movement-design-system";
 import { useMovementSDK } from "@movement-labs/miniapp-sdk";
 import {
   getChessModuleAddress,

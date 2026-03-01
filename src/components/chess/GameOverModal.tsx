@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "movement-design-system";
+import { Button } from "@moveindustries/movement-design-system";
 import {
   COLOR_WHITE,
   COLOR_BLACK,

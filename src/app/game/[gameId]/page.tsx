@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "movement-design-system";
+import { Button } from "@moveindustries/movement-design-system";
 import { useMovementSDK } from "@movement-labs/miniapp-sdk";
 import ChessBoard from "@/components/chess/ChessBoard";
 import GameTimer from "@/components/chess/GameTimer";

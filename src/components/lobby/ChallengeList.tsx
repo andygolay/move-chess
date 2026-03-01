@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "movement-design-system";
+import { Button } from "@moveindustries/movement-design-system";
 import { useMovementSDK } from "@movement-labs/miniapp-sdk";
 import { getChessModuleAddress, CHALLENGE_STATUS_OPEN } from "../../../constants";
 
