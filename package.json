@@ -21,9 +21,11 @@
     "@moveindustries/movement-design-system": "^1.0.0",
     "@movement-labs/miniapp-sdk": "github:MoveIndustries/mini-app-sdk",
     "@tailwindcss/postcss": "^4.1.14",
+    "@telegram-apps/bridge": "^2.11.0",
     "got": "11.8.6",
     "graphql": "^16.13.0",
     "graphql-request": "^7.4.0",
+    "mini-app-chess-p2p": "link:",
     "next": "15.5.9",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
