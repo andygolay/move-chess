@@ -1,3 +1,4 @@
 onlyBuiltDependencies:
   - "movement-design-system"
+  - "@moveindustries/movement-design-system"
   - "@movement-labs/miniapp-sdk"
