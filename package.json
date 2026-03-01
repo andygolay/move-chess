@@ -2,6 +2,13 @@
   "name": "mini-app-chess-p2p",
   "version": "0.1.0",
   "private": true,
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "movement-design-system",
+      "@moveindustries/movement-design-system",
+      "@movement-labs/miniapp-sdk"
+    ]
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
