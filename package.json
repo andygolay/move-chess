@@ -16,6 +16,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@mizuwallet-sdk/core": "^1.4.0",
+    "@mizuwallet-sdk/protocol": "0.0.6",
     "@moveindustries/movement-design-system": "^1.0.0",
     "@movement-labs/miniapp-sdk": "github:MoveIndustries/mini-app-sdk",
     "@tailwindcss/postcss": "^4.1.14",

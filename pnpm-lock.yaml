@@ -8,6 +8,12 @@ importers:
 
   .:
     dependencies:
+      '@mizuwallet-sdk/core':
+        specifier: ^1.4.0
+        version: 1.4.0(@aptos-labs/ts-sdk@1.39.0(axios@1.13.5)(got@11.8.6))(@mizuwallet-sdk/protocol@0.0.6)(graphql-request@7.4.0(graphql@16.12.0))
+      '@mizuwallet-sdk/protocol':
+        specifier: 0.0.6
+        version: 0.0.6
       '@moveindustries/movement-design-system':
         specifier: ^1.0.0
         version: 1.0.0(@aptos-labs/ts-sdk@1.39.0(axios@1.13.5)(got@11.8.6))(@aptos-labs/wallet-adapter-core@7.10.2(@aptos-labs/ts-sdk@1.39.0(axios@1.13.5)(got@11.8.6))(@telegram-apps/bridge@1.9.2)(@wallet-standard/core@1.0.3))(@aptos-labs/wallet-adapter-react@7.2.8(@aptos-labs/ts-sdk@1.39.0(axios@1.13.5)(got@11.8.6))(@telegram-apps/bridge@1.9.2)(@types/react@19.2.13)(@wallet-standard/core@1.0.3)(react@19.2.4))(@mizuwallet-sdk/core@1.4.0(@aptos-labs/ts-sdk@1.39.0(axios@1.13.5)(got@11.8.6))(@mizuwallet-sdk/protocol@0.0.6)(graphql-request@7.4.0(graphql@16.12.0)))(@mizuwallet-sdk/protocol@0.0.6)(@telegram-apps/bridge@1.9.2)(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(@wallet-standard/core@1.0.3)(aptos@1.22.1(got@11.8.6))(axios@1.13.5)(got@11.8.6)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.1.18)(vite@7.3.1(@types/node@24.10.12)(jiti@2.6.1)(lightningcss@1.30.2))
