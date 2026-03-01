@@ -16,9 +16,10 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@moveindustries/movement-design-system": "^1.0.0",
     "@movement-labs/miniapp-sdk": "github:MoveIndustries/mini-app-sdk",
     "@tailwindcss/postcss": "^4.1.14",
-    "@moveindustries/movement-design-system": "^1.0.0",
+    "got": "11.8.6",
     "next": "15.5.9",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"

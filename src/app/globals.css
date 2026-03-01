@@ -1,5 +1,5 @@
-@import "movement-design-system/component-styles";
-@import "movement-design-system/theme";
+@import "@moveindustries/movement-design-system/component-styles";
+@import "@moveindustries/movement-design-system/theme";
 @import "tailwindcss";
 
 /* Base resets */
