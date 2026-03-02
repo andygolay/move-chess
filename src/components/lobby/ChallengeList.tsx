@@ -131,7 +131,9 @@ export default function ChallengeList({ currentAddress }: ChallengeListProps) {
 
     try {
       await sdk.haptic?.({ type: "impact", style: "light" });
-      await sdk.sendTransaction({
+
+      // Start the transaction - don't await result as auto-approve runs in background
+      sdk.sendTransaction({
         function: `${getChessModuleAddress(sdk.network)}::chess_lobby::accept_challenge`,
         type_arguments: [],
         arguments: [challengeId.toString()],
@@ -139,14 +141,15 @@ export default function ChallengeList({ currentAddress }: ChallengeListProps) {
         description: "Accept this chess challenge",
         useFeePayer: true,
         gasLimit: "Sponsored",
+      }).catch(() => {
+        // Ignore - auto-approve may cause this to reject
       });
 
-      // Wait for transaction to be confirmed by polling for game_id
-      // Auto-approve may return before transaction is on-chain
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // Initial wait for tx confirmation
-
+      // Poll for game_id - transaction runs in background with auto-approve
       let gameId = 0;
-      for (let attempt = 0; attempt < 15; attempt++) {
+      for (let attempt = 0; attempt < 20; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 1500)); // Wait 1.5 seconds
+
         try {
           const result = await sdk.view({
             function: `${getChessModuleAddress(sdk.network)}::chess_lobby::get_game_id_for_challenge`,
@@ -169,8 +172,6 @@ export default function ChallengeList({ currentAddress }: ChallengeListProps) {
         } catch {
           // Challenge might not exist yet, keep waiting
         }
-
-        await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second before retry
       }
 
       if (gameId > 0) {
