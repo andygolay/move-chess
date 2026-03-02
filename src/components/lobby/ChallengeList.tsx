@@ -86,9 +86,17 @@ export default function ChallengeList({ currentAddress }: ChallengeListProps) {
         gasLimit: "Sponsored",
       });
 
-      // Navigate to game page after accepting
-      // The challenge_id becomes the game_id
-      router.push(`/game/${challengeId}`);
+      // Query the actual game_id from the accepted challenge
+      const result = await sdk.view({
+        function: `${getChessModuleAddress(sdk.network)}::chess_lobby::get_game_id_for_challenge`,
+        type_arguments: [],
+        function_arguments: [challengeId.toString()],
+      });
+
+      const gameId = Array.isArray(result) ? Number(result[0]) : Number(result);
+
+      // Navigate to game page using the actual game_id
+      router.push(`/game/${gameId}`);
     } catch (err) {
       console.error("[ChallengeList] Failed to accept:", err);
     } finally {

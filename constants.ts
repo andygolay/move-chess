@@ -29,15 +29,37 @@ export const COLOR_WHITE = 1;
 export const COLOR_BLACK = 2;
 
 // Game status (matching Move contract)
-export const GAME_STATUS_PENDING = 0;
 export const GAME_STATUS_ACTIVE = 1;
-export const GAME_STATUS_WHITE_WIN = 2;
-export const GAME_STATUS_BLACK_WIN = 3;
-export const GAME_STATUS_DRAW = 4;
-export const GAME_STATUS_WHITE_TIMEOUT = 5;
-export const GAME_STATUS_BLACK_TIMEOUT = 6;
-export const GAME_STATUS_WHITE_RESIGNED = 7;
-export const GAME_STATUS_BLACK_RESIGNED = 8;
+export const GAME_STATUS_WHITE_WIN_CHECKMATE = 2;
+export const GAME_STATUS_BLACK_WIN_CHECKMATE = 3;
+export const GAME_STATUS_DRAW_STALEMATE = 4;
+export const GAME_STATUS_DRAW_AGREEMENT = 5;
+export const GAME_STATUS_DRAW_50_MOVE = 6;
+export const GAME_STATUS_DRAW_INSUFFICIENT = 7;
+export const GAME_STATUS_WHITE_WIN_TIMEOUT = 8;
+export const GAME_STATUS_BLACK_WIN_TIMEOUT = 9;
+export const GAME_STATUS_WHITE_WIN_RESIGNATION = 10;
+export const GAME_STATUS_BLACK_WIN_RESIGNATION = 11;
+export const GAME_STATUS_DRAW_REPETITION = 12;
+
+// Helper groupings
+export const WHITE_WIN_STATUSES = [
+  GAME_STATUS_WHITE_WIN_CHECKMATE,
+  GAME_STATUS_WHITE_WIN_TIMEOUT,
+  GAME_STATUS_WHITE_WIN_RESIGNATION,
+];
+export const BLACK_WIN_STATUSES = [
+  GAME_STATUS_BLACK_WIN_CHECKMATE,
+  GAME_STATUS_BLACK_WIN_TIMEOUT,
+  GAME_STATUS_BLACK_WIN_RESIGNATION,
+];
+export const DRAW_STATUSES = [
+  GAME_STATUS_DRAW_STALEMATE,
+  GAME_STATUS_DRAW_AGREEMENT,
+  GAME_STATUS_DRAW_50_MOVE,
+  GAME_STATUS_DRAW_INSUFFICIENT,
+  GAME_STATUS_DRAW_REPETITION,
+];
 
 // Challenge status (matching Move contract)
 export const CHALLENGE_STATUS_OPEN = 0;
@@ -50,12 +72,14 @@ export const COLOR_RANDOM = 0;
 // COLOR_WHITE and COLOR_BLACK already defined above
 
 // Time control presets (in seconds)
+// Contract limits: min 30s, max 10800s (3 hours), increment max 60s
 export const TIME_CONTROLS: readonly { label: string; base: number; increment: number }[] = [
+  { label: "1 min", base: 60, increment: 0 },
+  { label: "3 min", base: 180, increment: 2 },
   { label: "5 min", base: 300, increment: 0 },
   { label: "10 min", base: 600, increment: 0 },
-  { label: "20 min", base: 1200, increment: 0 },
+  { label: "15+10", base: 900, increment: 10 },
   { label: "30 min", base: 1800, increment: 0 },
-  { label: "24 hours", base: 86400, increment: 0 },
 ];
 
 // Initial ELO rating
@@ -111,30 +135,80 @@ export function formatTime(ms: number): string {
 // Get game status text
 export function getGameStatusText(status: number): string {
   switch (status) {
-    case GAME_STATUS_PENDING:
-      return "Waiting to start";
     case GAME_STATUS_ACTIVE:
       return "In progress";
-    case GAME_STATUS_WHITE_WIN:
-      return "White wins";
-    case GAME_STATUS_BLACK_WIN:
-      return "Black wins";
-    case GAME_STATUS_DRAW:
-      return "Draw";
-    case GAME_STATUS_WHITE_TIMEOUT:
-      return "White timeout - Black wins";
-    case GAME_STATUS_BLACK_TIMEOUT:
-      return "Black timeout - White wins";
-    case GAME_STATUS_WHITE_RESIGNED:
-      return "White resigned - Black wins";
-    case GAME_STATUS_BLACK_RESIGNED:
-      return "Black resigned - White wins";
+    case GAME_STATUS_WHITE_WIN_CHECKMATE:
+      return "White wins by checkmate";
+    case GAME_STATUS_BLACK_WIN_CHECKMATE:
+      return "Black wins by checkmate";
+    case GAME_STATUS_DRAW_STALEMATE:
+      return "Draw by stalemate";
+    case GAME_STATUS_DRAW_AGREEMENT:
+      return "Draw by agreement";
+    case GAME_STATUS_DRAW_50_MOVE:
+      return "Draw by 50-move rule";
+    case GAME_STATUS_DRAW_INSUFFICIENT:
+      return "Draw by insufficient material";
+    case GAME_STATUS_WHITE_WIN_TIMEOUT:
+      return "White wins on time";
+    case GAME_STATUS_BLACK_WIN_TIMEOUT:
+      return "Black wins on time";
+    case GAME_STATUS_WHITE_WIN_RESIGNATION:
+      return "White wins by resignation";
+    case GAME_STATUS_BLACK_WIN_RESIGNATION:
+      return "Black wins by resignation";
+    case GAME_STATUS_DRAW_REPETITION:
+      return "Draw by repetition";
     default:
       return "Unknown";
   }
 }
 
+// Get short result reason for modals
+export function getResultReason(status: number): string {
+  switch (status) {
+    case GAME_STATUS_WHITE_WIN_CHECKMATE:
+    case GAME_STATUS_BLACK_WIN_CHECKMATE:
+      return "Checkmate";
+    case GAME_STATUS_WHITE_WIN_TIMEOUT:
+      return "White ran out of time";
+    case GAME_STATUS_BLACK_WIN_TIMEOUT:
+      return "Black ran out of time";
+    case GAME_STATUS_WHITE_WIN_RESIGNATION:
+      return "Black resigned";
+    case GAME_STATUS_BLACK_WIN_RESIGNATION:
+      return "White resigned";
+    case GAME_STATUS_DRAW_STALEMATE:
+      return "Stalemate";
+    case GAME_STATUS_DRAW_AGREEMENT:
+      return "Draw agreed";
+    case GAME_STATUS_DRAW_50_MOVE:
+      return "50-move rule";
+    case GAME_STATUS_DRAW_INSUFFICIENT:
+      return "Insufficient material";
+    case GAME_STATUS_DRAW_REPETITION:
+      return "Threefold repetition";
+    default:
+      return "";
+  }
+}
+
 // Check if game is over
 export function isGameOver(status: number): boolean {
-  return status >= GAME_STATUS_WHITE_WIN;
+  return status >= GAME_STATUS_WHITE_WIN_CHECKMATE;
+}
+
+// Check if white won
+export function isWhiteWin(status: number): boolean {
+  return WHITE_WIN_STATUSES.includes(status);
+}
+
+// Check if black won
+export function isBlackWin(status: number): boolean {
+  return BLACK_WIN_STATUSES.includes(status);
+}
+
+// Check if draw
+export function isDraw(status: number): boolean {
+  return DRAW_STATUSES.includes(status);
 }

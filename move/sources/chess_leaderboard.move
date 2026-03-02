@@ -5,6 +5,11 @@ module chess::chess_leaderboard {
     use aptos_framework::event;
 
     // ============================================
+    // FRIEND MODULES
+    // ============================================
+    friend chess::chess_game;
+
+    // ============================================
     // CONSTANTS
     // ============================================
     const INITIAL_RATING: u64 = 1200;
@@ -80,6 +85,12 @@ module chess::chess_leaderboard {
         });
     }
 
+    #[test_only]
+    /// Initialize for testing
+    public fun init_module_for_test(deployer: &signer) {
+        init_module(deployer);
+    }
+
     // ============================================
     // ENTRY FUNCTIONS
     // ============================================
@@ -121,22 +132,13 @@ module chess::chess_leaderboard {
     }
 
     // ============================================
-    // FRIEND/PUBLIC FUNCTIONS (called by chess_game)
+    // FRIEND FUNCTIONS (only callable by chess_game)
     // ============================================
 
     /// Update ratings after a game completes
     /// result: 1 = white wins, 2 = black wins, 3 = draw
-    public entry fun update_ratings_after_game(
-        _caller: &signer,
-        white_player: address,
-        black_player: address,
-        result: u8,
-    ) acquires PlayerStats, Leaderboard {
-        update_ratings_internal(white_player, black_player, result);
-    }
-
-    /// Internal function to update ratings (can be called by friend modules)
-    public fun update_ratings_internal(
+    /// SECURITY: Only callable by friend module chess_game
+    public(friend) fun update_ratings_internal(
         white_player: address,
         black_player: address,
         result: u8,
@@ -303,6 +305,7 @@ module chess::chess_leaderboard {
         };
 
         // Sort by rating (descending) - simple bubble sort
+        // Note: For production with many players, consider using a sorted data structure
         let total = vector::length(&all_stats);
         if (total > 1) {
             let i = 0;
@@ -383,17 +386,25 @@ module chess::chess_leaderboard {
         };
 
         // Lookup table for expected score based on rating difference
+        // More granular for smoother rating changes
         let expected_higher = if (diff >= 800) { 99 }
+            else if (diff >= 700) { 98 }
             else if (diff >= 600) { 97 }
+            else if (diff >= 550) { 96 }
             else if (diff >= 500) { 95 }
+            else if (diff >= 450) { 93 }
             else if (diff >= 400) { 91 }
             else if (diff >= 350) { 88 }
             else if (diff >= 300) { 85 }
             else if (diff >= 250) { 81 }
             else if (diff >= 200) { 76 }
+            else if (diff >= 175) { 73 }
             else if (diff >= 150) { 70 }
+            else if (diff >= 125) { 67 }
             else if (diff >= 100) { 64 }
+            else if (diff >= 75) { 60 }
             else if (diff >= 50) { 57 }
+            else if (diff >= 25) { 53 }
             else { 50 };
 
         if (white_rating >= black_rating) {
@@ -432,5 +443,247 @@ module chess::chess_leaderboard {
                 current - loss
             }
         }
+    }
+
+    // ============================================
+    // TEST HELPERS
+    // ============================================
+
+    #[test_only]
+    /// Update ratings for testing purposes
+    public fun update_ratings_for_test(
+        white_player: address,
+        black_player: address,
+        result: u8,
+    ) acquires PlayerStats, Leaderboard {
+        update_ratings_internal(white_player, black_player, result);
+    }
+
+    // ============================================
+    // UNIT TESTS
+    // ============================================
+
+    #[test(deployer = @chess, player1 = @0x123)]
+    fun test_register_player(deployer: &signer, player1: &signer) acquires Leaderboard, PlayerStats {
+        // Setup
+        timestamp::set_time_has_started_for_testing(&aptos_framework::account::create_signer_for_test(@0x1));
+        init_module_for_test(deployer);
+
+        // Register player
+        register_player(player1);
+
+        // Verify registration
+        let player_addr = signer::address_of(player1);
+        assert!(is_registered(player_addr), 1);
+        assert!(get_rating(player_addr) == INITIAL_RATING, 2);
+
+        let stats = get_player_stats(player_addr);
+        assert!(stats.games_played == 0, 3);
+        assert!(stats.wins == 0, 4);
+        assert!(stats.losses == 0, 5);
+        assert!(stats.draws == 0, 6);
+    }
+
+    #[test(deployer = @chess, player1 = @0x123)]
+    #[expected_failure(abort_code = E_ALREADY_REGISTERED)]
+    fun test_register_player_twice_fails(deployer: &signer, player1: &signer) acquires Leaderboard {
+        timestamp::set_time_has_started_for_testing(&aptos_framework::account::create_signer_for_test(@0x1));
+        init_module_for_test(deployer);
+
+        register_player(player1);
+        register_player(player1); // Should fail
+    }
+
+    #[test(deployer = @chess, player1 = @0x123, player2 = @0x456)]
+    fun test_rating_update_white_wins(deployer: &signer, player1: &signer, player2: &signer) acquires Leaderboard, PlayerStats {
+        timestamp::set_time_has_started_for_testing(&aptos_framework::account::create_signer_for_test(@0x1));
+        init_module_for_test(deployer);
+
+        register_player(player1);
+        register_player(player2);
+
+        let p1_addr = signer::address_of(player1);
+        let p2_addr = signer::address_of(player2);
+
+        let p1_rating_before = get_rating(p1_addr);
+        let p2_rating_before = get_rating(p2_addr);
+
+        // White (player1) wins
+        update_ratings_for_test(p1_addr, p2_addr, RESULT_WHITE_WIN);
+
+        let p1_rating_after = get_rating(p1_addr);
+        let p2_rating_after = get_rating(p2_addr);
+
+        // Winner should gain rating, loser should lose rating
+        assert!(p1_rating_after > p1_rating_before, 1);
+        assert!(p2_rating_after < p2_rating_before, 2);
+
+        // Verify stats
+        let p1_stats = get_player_stats(p1_addr);
+        let p2_stats = get_player_stats(p2_addr);
+        assert!(p1_stats.wins == 1, 3);
+        assert!(p1_stats.losses == 0, 4);
+        assert!(p2_stats.wins == 0, 5);
+        assert!(p2_stats.losses == 1, 6);
+    }
+
+    #[test(deployer = @chess, player1 = @0x123, player2 = @0x456)]
+    fun test_rating_update_black_wins(deployer: &signer, player1: &signer, player2: &signer) acquires Leaderboard, PlayerStats {
+        timestamp::set_time_has_started_for_testing(&aptos_framework::account::create_signer_for_test(@0x1));
+        init_module_for_test(deployer);
+
+        register_player(player1);
+        register_player(player2);
+
+        let p1_addr = signer::address_of(player1);
+        let p2_addr = signer::address_of(player2);
+
+        // Black (player2) wins
+        update_ratings_for_test(p1_addr, p2_addr, RESULT_BLACK_WIN);
+
+        let p1_stats = get_player_stats(p1_addr);
+        let p2_stats = get_player_stats(p2_addr);
+        assert!(p1_stats.losses == 1, 1);
+        assert!(p2_stats.wins == 1, 2);
+    }
+
+    #[test(deployer = @chess, player1 = @0x123, player2 = @0x456)]
+    fun test_rating_update_draw(deployer: &signer, player1: &signer, player2: &signer) acquires Leaderboard, PlayerStats {
+        timestamp::set_time_has_started_for_testing(&aptos_framework::account::create_signer_for_test(@0x1));
+        init_module_for_test(deployer);
+
+        register_player(player1);
+        register_player(player2);
+
+        let p1_addr = signer::address_of(player1);
+        let p2_addr = signer::address_of(player2);
+
+        // Draw
+        update_ratings_for_test(p1_addr, p2_addr, RESULT_DRAW);
+
+        let p1_stats = get_player_stats(p1_addr);
+        let p2_stats = get_player_stats(p2_addr);
+        assert!(p1_stats.draws == 1, 1);
+        assert!(p2_stats.draws == 1, 2);
+    }
+
+    #[test(deployer = @chess, player1 = @0x123, player2 = @0x456)]
+    fun test_win_streak_tracking(deployer: &signer, player1: &signer, player2: &signer) acquires Leaderboard, PlayerStats {
+        timestamp::set_time_has_started_for_testing(&aptos_framework::account::create_signer_for_test(@0x1));
+        init_module_for_test(deployer);
+
+        register_player(player1);
+        register_player(player2);
+
+        let p1_addr = signer::address_of(player1);
+        let p2_addr = signer::address_of(player2);
+
+        // Player 1 wins 3 games in a row
+        update_ratings_for_test(p1_addr, p2_addr, RESULT_WHITE_WIN);
+        update_ratings_for_test(p1_addr, p2_addr, RESULT_WHITE_WIN);
+        update_ratings_for_test(p1_addr, p2_addr, RESULT_WHITE_WIN);
+
+        let p1_stats = get_player_stats(p1_addr);
+        assert!(p1_stats.current_win_streak == 3, 1);
+        assert!(p1_stats.best_win_streak == 3, 2);
+
+        // Player 1 loses, streak resets
+        update_ratings_for_test(p1_addr, p2_addr, RESULT_BLACK_WIN);
+
+        let p1_stats = get_player_stats(p1_addr);
+        assert!(p1_stats.current_win_streak == 0, 3);
+        assert!(p1_stats.best_win_streak == 3, 4); // Best streak preserved
+        assert!(p1_stats.current_loss_streak == 1, 5);
+    }
+
+    #[test(deployer = @chess, player1 = @0x123, player2 = @0x456, player3 = @0x789)]
+    fun test_get_top_players(deployer: &signer, player1: &signer, player2: &signer, player3: &signer) acquires Leaderboard, PlayerStats {
+        timestamp::set_time_has_started_for_testing(&aptos_framework::account::create_signer_for_test(@0x1));
+        init_module_for_test(deployer);
+
+        register_player(player1);
+        register_player(player2);
+        register_player(player3);
+
+        let p1_addr = signer::address_of(player1);
+        let p2_addr = signer::address_of(player2);
+
+        // Player 1 wins against player 2 to have higher rating
+        update_ratings_for_test(p1_addr, p2_addr, RESULT_WHITE_WIN);
+
+        let top = get_top_players(10);
+        assert!(vector::length(&top) == 3, 1);
+        // First player should have highest rating
+        assert!(vector::borrow(&top, 0).player == p1_addr, 2);
+    }
+
+    #[test(deployer = @chess, player1 = @0x123, player2 = @0x456)]
+    fun test_get_player_rank(deployer: &signer, player1: &signer, player2: &signer) acquires Leaderboard, PlayerStats {
+        timestamp::set_time_has_started_for_testing(&aptos_framework::account::create_signer_for_test(@0x1));
+        init_module_for_test(deployer);
+
+        register_player(player1);
+        register_player(player2);
+
+        let p1_addr = signer::address_of(player1);
+        let p2_addr = signer::address_of(player2);
+
+        // Initially same rating, both rank 1
+        assert!(get_player_rank(p1_addr) == 1, 1);
+        assert!(get_player_rank(p2_addr) == 1, 2);
+
+        // Player 1 wins, should be rank 1
+        update_ratings_for_test(p1_addr, p2_addr, RESULT_WHITE_WIN);
+
+        assert!(get_player_rank(p1_addr) == 1, 3);
+        assert!(get_player_rank(p2_addr) == 2, 4);
+    }
+
+    #[test(deployer = @chess, player1 = @0x123, player2 = @0x456)]
+    fun test_highest_rating_tracking(deployer: &signer, player1: &signer, player2: &signer) acquires Leaderboard, PlayerStats {
+        timestamp::set_time_has_started_for_testing(&aptos_framework::account::create_signer_for_test(@0x1));
+        init_module_for_test(deployer);
+
+        register_player(player1);
+        register_player(player2);
+
+        let p1_addr = signer::address_of(player1);
+        let p2_addr = signer::address_of(player2);
+
+        // Player 1 wins to increase rating
+        update_ratings_for_test(p1_addr, p2_addr, RESULT_WHITE_WIN);
+
+        let p1_stats = get_player_stats(p1_addr);
+        let peak_rating = p1_stats.highest_rating;
+        assert!(peak_rating > INITIAL_RATING, 1);
+
+        // Player 1 loses
+        update_ratings_for_test(p1_addr, p2_addr, RESULT_BLACK_WIN);
+
+        let p1_stats = get_player_stats(p1_addr);
+        // Highest rating should remain the same
+        assert!(p1_stats.highest_rating == peak_rating, 2);
+        assert!(p1_stats.rating < peak_rating, 3);
+    }
+
+    #[test(deployer = @chess)]
+    fun test_total_players_and_games(deployer: &signer) acquires Leaderboard, PlayerStats {
+        timestamp::set_time_has_started_for_testing(&aptos_framework::account::create_signer_for_test(@0x1));
+        init_module_for_test(deployer);
+
+        assert!(get_total_players() == 0, 1);
+        assert!(get_total_games() == 0, 2);
+
+        let player1 = &aptos_framework::account::create_signer_for_test(@0x123);
+        let player2 = &aptos_framework::account::create_signer_for_test(@0x456);
+
+        register_player(player1);
+        register_player(player2);
+
+        assert!(get_total_players() == 2, 3);
+
+        update_ratings_for_test(@0x123, @0x456, RESULT_WHITE_WIN);
+
+        assert!(get_total_games() == 1, 4);
     }
 }

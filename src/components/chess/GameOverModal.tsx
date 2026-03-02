@@ -4,13 +4,10 @@ import { Button } from "@moveindustries/movement-design-system";
 import {
   COLOR_WHITE,
   COLOR_BLACK,
-  GAME_STATUS_WHITE_WIN,
-  GAME_STATUS_BLACK_WIN,
-  GAME_STATUS_DRAW,
-  GAME_STATUS_WHITE_TIMEOUT,
-  GAME_STATUS_BLACK_TIMEOUT,
-  GAME_STATUS_WHITE_RESIGNED,
-  GAME_STATUS_BLACK_RESIGNED,
+  isWhiteWin,
+  isBlackWin,
+  isDraw,
+  getResultReason,
 } from "../../../constants";
 
 interface GameOverModalProps {
@@ -24,17 +21,9 @@ export default function GameOverModal({
   playerColor,
   onClose,
 }: GameOverModalProps) {
-  const whiteWon =
-    status === GAME_STATUS_WHITE_WIN ||
-    status === GAME_STATUS_BLACK_TIMEOUT ||
-    status === GAME_STATUS_BLACK_RESIGNED;
-
-  const blackWon =
-    status === GAME_STATUS_BLACK_WIN ||
-    status === GAME_STATUS_WHITE_TIMEOUT ||
-    status === GAME_STATUS_WHITE_RESIGNED;
-
-  const isDraw = status === GAME_STATUS_DRAW;
+  const whiteWon = isWhiteWin(status);
+  const blackWon = isBlackWin(status);
+  const gameIsDraw = isDraw(status);
 
   const playerWon =
     (playerColor === COLOR_WHITE && whiteWon) ||
@@ -45,37 +34,17 @@ export default function GameOverModal({
     (playerColor === COLOR_BLACK && whiteWon);
 
   const getResultText = () => {
-    if (isDraw) return "Draw";
+    if (gameIsDraw) return "Draw";
     if (playerWon) return "You Win!";
     if (playerLost) return "You Lose";
     return whiteWon ? "White Wins" : "Black Wins";
   };
 
-  const getResultReason = () => {
-    switch (status) {
-      case GAME_STATUS_WHITE_WIN:
-      case GAME_STATUS_BLACK_WIN:
-        return "Checkmate";
-      case GAME_STATUS_WHITE_TIMEOUT:
-        return "White ran out of time";
-      case GAME_STATUS_BLACK_TIMEOUT:
-        return "Black ran out of time";
-      case GAME_STATUS_WHITE_RESIGNED:
-        return "White resigned";
-      case GAME_STATUS_BLACK_RESIGNED:
-        return "Black resigned";
-      case GAME_STATUS_DRAW:
-        return "Game ended in draw";
-      default:
-        return "";
-    }
-  };
-
   const getEmoji = () => {
-    if (isDraw) return "🤝";
-    if (playerWon) return "🏆";
-    if (playerLost) return "😔";
-    return "♟";
+    if (gameIsDraw) return "\u{1F91D}";
+    if (playerWon) return "\u{1F3C6}";
+    if (playerLost) return "\u{1F614}";
+    return "\u265F";
   };
 
   return (
@@ -96,7 +65,7 @@ export default function GameOverModal({
         </h2>
 
         <p className="text-gray-500 dark:text-gray-400 mb-6">
-          {getResultReason()}
+          {getResultReason(status)}
         </p>
 
         <Button

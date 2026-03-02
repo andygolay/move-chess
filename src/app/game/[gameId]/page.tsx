@@ -68,33 +68,45 @@ export default function GamePage({ params }: PageParams) {
     if (!sdk || !gameId) return;
 
     try {
-      const result = await sdk.view({
-        function: `${getChessModuleAddress(sdk.network)}::chess_game::get_game_state`,
-        type_arguments: [],
-        function_arguments: [gameId],
+      // Fetch game state (returns tuple) and board in parallel
+      const [stateResult, boardResult] = await Promise.all([
+        sdk.view({
+          function: `${getChessModuleAddress(sdk.network)}::chess_game::get_game_state`,
+          type_arguments: [],
+          function_arguments: [gameId],
+        }),
+        sdk.view({
+          function: `${getChessModuleAddress(sdk.network)}::chess_game::get_board`,
+          type_arguments: [],
+          function_arguments: [gameId],
+        }),
+      ]);
+
+      // get_game_state returns tuple: (game_id, white_player, black_player, active_color, status,
+      //   white_time_remaining_ms, black_time_remaining_ms, last_move_timestamp_ms,
+      //   en_passant_target, halfmove_clock, fullmove_number, draw_offer_by)
+      const stateData = Array.isArray(stateResult) ? stateResult : [stateResult];
+
+      // get_board returns vector<Square>
+      const boardData = Array.isArray(boardResult) ? boardResult[0] : boardResult;
+      const board = Array.isArray(boardData)
+        ? boardData.map((sq: Record<string, unknown>) => ({
+            piece_type: Number(sq.piece_type || 0),
+            color: Number(sq.color || 0),
+          }))
+        : [];
+
+      setGameState({
+        game_id: Number(stateData[0] || 0),
+        white_player: String(stateData[1] || ""),
+        black_player: String(stateData[2] || ""),
+        board,
+        active_color: Number(stateData[3] || 1),
+        status: Number(stateData[4] || 0),
+        white_time_remaining_ms: Number(stateData[5] || 0),
+        black_time_remaining_ms: Number(stateData[6] || 0),
+        last_move_timestamp_ms: Number(stateData[7] || 0),
       });
-
-      const data = Array.isArray(result) ? result[0] : result;
-      if (data) {
-        const board = Array.isArray(data.board)
-          ? data.board.map((sq: Record<string, unknown>) => ({
-              piece_type: Number(sq.piece_type || 0),
-              color: Number(sq.color || 0),
-            }))
-          : [];
-
-        setGameState({
-          game_id: Number(data.game_id || 0),
-          white_player: String(data.white_player || ""),
-          black_player: String(data.black_player || ""),
-          board,
-          active_color: Number(data.active_color || 1),
-          status: Number(data.status || 0),
-          white_time_remaining_ms: Number(data.white_time_remaining_ms || 0),
-          black_time_remaining_ms: Number(data.black_time_remaining_ms || 0),
-          last_move_timestamp_ms: Number(data.last_move_timestamp_ms || 0),
-        });
-      }
     } catch (err) {
       console.error("[Game] Failed to fetch state:", err);
       setError("Failed to load game");
