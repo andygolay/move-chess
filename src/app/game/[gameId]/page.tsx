@@ -69,8 +69,8 @@ export default function GamePage({ params }: PageParams) {
     if (!sdk || !gameId) return;
 
     try {
-      // Fetch game state (returns tuple) and board in parallel
-      const [stateResult, boardResult] = await Promise.all([
+      // Fetch game state, board, and current time remaining in parallel
+      const [stateResult, boardResult, timeResult] = await Promise.all([
         sdk.view({
           function: `${getChessModuleAddress(sdk.network)}::chess_game::get_game_state`,
           type_arguments: [],
@@ -81,7 +81,15 @@ export default function GamePage({ params }: PageParams) {
           type_arguments: [],
           function_arguments: [gameId],
         }),
+        sdk.view({
+          function: `${getChessModuleAddress(sdk.network)}::chess_game::get_current_time_remaining`,
+          type_arguments: [],
+          function_arguments: [gameId],
+        }),
       ]);
+
+      // Record when we fetched (for local countdown between polls)
+      const fetchTimestamp = Date.now();
 
       // get_game_state returns tuple: (game_id, white_player, black_player, active_color, status,
       //   white_time_remaining_ms, black_time_remaining_ms, last_move_timestamp_ms,
@@ -97,6 +105,9 @@ export default function GamePage({ params }: PageParams) {
           }))
         : [];
 
+      // get_current_time_remaining returns (white_time_ms, black_time_ms) calculated by blockchain
+      const timeData = Array.isArray(timeResult) ? timeResult : [timeResult];
+
       setGameState({
         game_id: Number(stateData[0] || 0),
         white_player: String(stateData[1] || ""),
@@ -104,9 +115,9 @@ export default function GamePage({ params }: PageParams) {
         board,
         active_color: Number(stateData[3] || 1),
         status: Number(stateData[4] || 0),
-        white_time_remaining_ms: Number(stateData[5] || 0),
-        black_time_remaining_ms: Number(stateData[6] || 0),
-        last_move_timestamp_ms: Number(stateData[7] || 0),
+        white_time_remaining_ms: Number(timeData[0] || 0),
+        black_time_remaining_ms: Number(timeData[1] || 0),
+        last_move_timestamp_ms: fetchTimestamp, // Use local fetch time for countdown
       });
     } catch (err) {
       console.error("[Game] Failed to fetch state:", err);
@@ -148,7 +159,7 @@ export default function GamePage({ params }: PageParams) {
           await sdk.sendTransaction({
             function: `${getChessModuleAddress(sdk.network)}::chess_game::claim_timeout`,
             type_arguments: [],
-            arguments: [gameId],
+            arguments: [gameId.toString()],
             title: "Claim Timeout",
             description: "Opponent ran out of time",
           });
@@ -249,7 +260,7 @@ export default function GamePage({ params }: PageParams) {
       await sdk.sendTransaction({
         function: `${getChessModuleAddress(sdk.network)}::chess_game::make_move`,
         type_arguments: [],
-        arguments: [gameId, from, to, promotion],
+        arguments: [gameId.toString(), from.toString(), to.toString(), promotion.toString()],
         title: "Make Move",
         description: "Execute chess move",
       });
@@ -282,7 +293,7 @@ export default function GamePage({ params }: PageParams) {
       await sdk.sendTransaction({
         function: `${getChessModuleAddress(sdk.network)}::chess_game::resign`,
         type_arguments: [],
-        arguments: [gameId],
+        arguments: [gameId.toString()],
         title: "Resign Game",
         description: "Resign from this game",
       });
@@ -301,7 +312,7 @@ export default function GamePage({ params }: PageParams) {
       await sdk.sendTransaction({
         function: `${getChessModuleAddress(sdk.network)}::chess_game::claim_timeout`,
         type_arguments: [],
-        arguments: [gameId],
+        arguments: [gameId.toString()],
         title: "Claim Timeout",
         description: "Claim win by timeout",
       });

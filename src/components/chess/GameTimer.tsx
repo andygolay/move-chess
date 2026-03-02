@@ -23,6 +23,7 @@ export default function GameTimer({
     }
 
     // Calculate remaining time based on elapsed time since last move
+    // Note: Device clock drift may cause slight differences between players
     const updateTime = () => {
       const now = Date.now();
       const elapsed = now - lastMoveTimestamp;
