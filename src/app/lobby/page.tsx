@@ -83,8 +83,6 @@ export default function LobbyPage() {
         arguments: [],
         title: "Register for Chess",
         description: "Create your player profile with initial rating",
-        useFeePayer: true,
-        gasLimit: "Sponsored",
       });
 
       await checkRegistration();
@@ -122,8 +120,6 @@ export default function LobbyPage() {
         ],
         title: "Create Challenge",
         description: `Create ${timeControl.label} challenge`,
-        useFeePayer: true,
-        gasLimit: "Sponsored",
       });
 
       await sdk.notify?.({

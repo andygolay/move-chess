@@ -139,8 +139,6 @@ export default function ChallengeList({ currentAddress }: ChallengeListProps) {
         arguments: [challengeId.toString()],
         title: "Accept Challenge",
         description: "Accept this chess challenge",
-        useFeePayer: true,
-        gasLimit: "Sponsored",
       }).catch(() => {
         // Ignore - auto-approve may cause this to reject
       });
@@ -195,8 +193,6 @@ export default function ChallengeList({ currentAddress }: ChallengeListProps) {
         arguments: [challengeId.toString()],
         title: "Cancel Challenge",
         description: "Cancel your chess challenge",
-        useFeePayer: true,
-        gasLimit: "Sponsored",
       });
 
       await fetchChallenges();

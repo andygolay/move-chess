@@ -151,8 +151,6 @@ export default function GamePage({ params }: PageParams) {
             arguments: [gameId],
             title: "Claim Timeout",
             description: "Opponent ran out of time",
-            useFeePayer: true,
-            gasLimit: "Sponsored",
           });
           await fetchGameState();
         } catch (e) {
@@ -254,8 +252,6 @@ export default function GamePage({ params }: PageParams) {
         arguments: [gameId, from, to, promotion],
         title: "Make Move",
         description: "Execute chess move",
-        useFeePayer: true,
-        gasLimit: "Sponsored",
       });
 
       setSelectedSquare(null);
@@ -289,8 +285,6 @@ export default function GamePage({ params }: PageParams) {
         arguments: [gameId],
         title: "Resign Game",
         description: "Resign from this game",
-        useFeePayer: true,
-        gasLimit: "Sponsored",
       });
 
       await fetchGameState();
@@ -310,8 +304,6 @@ export default function GamePage({ params }: PageParams) {
         arguments: [gameId],
         title: "Claim Timeout",
         description: "Claim win by timeout",
-        useFeePayer: true,
-        gasLimit: "Sponsored",
       });
 
       await fetchGameState();

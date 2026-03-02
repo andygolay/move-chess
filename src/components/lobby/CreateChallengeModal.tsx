@@ -42,8 +42,6 @@ export default function CreateChallengeModal({
         ],
         title: "Create Challenge",
         description: `Create ${selectedTimeControl.label} challenge`,
-        useFeePayer: true,
-        gasLimit: "Sponsored",
       });
 
       await sdk.notify?.({
