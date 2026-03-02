@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, use } from "react";
+import { useState, useEffect, useCallback, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@moveindustries/movement-design-system";
 import { useMovementSDK } from "@movement-labs/miniapp-sdk";
@@ -53,6 +53,7 @@ export default function GamePage({ params }: PageParams) {
   } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const timeoutClaimedRef = useRef(false);
 
   const playerColor =
     address?.toLowerCase() === gameState?.white_player?.toLowerCase()
@@ -115,9 +116,57 @@ export default function GamePage({ params }: PageParams) {
 
   useEffect(() => {
     fetchGameState();
-    const interval = setInterval(fetchGameState, 2000);
+    const interval = setInterval(fetchGameState, 5000); // Poll every 5s instead of 2s
     return () => clearInterval(interval);
   }, [fetchGameState]);
+
+  // Auto-claim timeout when opponent's time runs out
+  useEffect(() => {
+    if (!sdk || !gameState || !isGameActive || !playerColor || timeoutClaimedRef.current) {
+      return;
+    }
+
+    const checkTimeout = async () => {
+      const now = Date.now();
+      const elapsed = now - gameState.last_move_timestamp_ms;
+
+      // Calculate opponent's remaining time
+      const opponentTimeMs =
+        playerColor === COLOR_WHITE
+          ? gameState.black_time_remaining_ms
+          : gameState.white_time_remaining_ms;
+
+      // Only check opponent's time when it's their turn
+      const isOpponentsTurn = gameState.active_color !== playerColor;
+      if (!isOpponentsTurn) return;
+
+      const opponentRemainingTime = opponentTimeMs - elapsed;
+
+      if (opponentRemainingTime <= 0) {
+        timeoutClaimedRef.current = true;
+        try {
+          await sdk.sendTransaction({
+            function: `${getChessModuleAddress(sdk.network)}::chess_game::claim_timeout`,
+            type_arguments: [],
+            arguments: [gameId],
+            title: "Claim Timeout",
+            description: "Opponent ran out of time",
+            useFeePayer: true,
+            gasLimit: "Sponsored",
+          });
+          await fetchGameState();
+        } catch (e) {
+          console.error("[Game] Failed to auto-claim timeout:", e);
+          timeoutClaimedRef.current = false; // Allow retry
+        }
+      }
+    };
+
+    const interval = setInterval(checkTimeout, 3000); // Check every 3s
+    checkTimeout(); // Check immediately
+
+    return () => clearInterval(interval);
+  }, [sdk, gameState, isGameActive, playerColor, gameId, fetchGameState]);
 
   const fetchLegalMoves = useCallback(
     async (square: number) => {
@@ -130,11 +179,21 @@ export default function GamePage({ params }: PageParams) {
           function_arguments: [gameId, square],
         });
 
-        const moves = Array.isArray(result)
-          ? Array.isArray(result[0])
-            ? result[0]
-            : result
-          : [];
+        // Result is ["0x..."] where the hex string contains the u8 bytes
+        const data = Array.isArray(result) ? result[0] : result;
+
+        // Parse hex string to byte array (each 2 hex chars = 1 u8 square index)
+        if (typeof data === "string" && data.startsWith("0x")) {
+          const hex = data.slice(2); // Remove "0x" prefix
+          const moves: number[] = [];
+          for (let i = 0; i < hex.length; i += 2) {
+            moves.push(parseInt(hex.substring(i, i + 2), 16));
+          }
+          return moves;
+        }
+
+        // Fallback for array format
+        const moves = Array.isArray(data) ? data : [];
         return moves.map((m: unknown) => Number(m));
       } catch (err) {
         console.error("[Game] Failed to fetch legal moves:", err);

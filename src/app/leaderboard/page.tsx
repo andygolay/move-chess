@@ -84,7 +84,6 @@ export default function LeaderboardPage() {
           </div>
         ) : players.length === 0 ? (
           <div className="text-center py-12">
-            <div className="text-4xl mb-4">🏆</div>
             <p className="text-gray-500 dark:text-gray-400">
               No players yet. Be the first to register!
             </p>

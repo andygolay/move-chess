@@ -206,7 +206,6 @@ export default function ChallengeList({ currentAddress }: ChallengeListProps) {
   if (challenges.length === 0) {
     return (
       <div className="text-center py-8">
-        <div className="text-2xl mb-2">🎯</div>
         <p className="text-gray-500 dark:text-gray-400 text-sm">
           No open challenges yet.
           <br />

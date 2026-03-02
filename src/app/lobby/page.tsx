@@ -174,7 +174,6 @@ export default function LobbyPage() {
         {!isConnected ? (
           /* Not Connected State */
           <div className="bg-white dark:bg-gray-800 rounded-xl p-8 text-center shadow-sm">
-            <div className="text-4xl mb-4">♟</div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
               Connect to Play
             </h2>
@@ -185,7 +184,6 @@ export default function LobbyPage() {
         ) : !isRegistered ? (
           /* Not Registered State */
           <div className="bg-white dark:bg-gray-800 rounded-xl p-8 text-center shadow-sm">
-            <div className="text-4xl mb-4">♟</div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
               Join the Game
             </h2>

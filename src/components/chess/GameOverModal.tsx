@@ -40,17 +40,9 @@ export default function GameOverModal({
     return whiteWon ? "White Wins" : "Black Wins";
   };
 
-  const getEmoji = () => {
-    if (gameIsDraw) return "\u{1F91D}";
-    if (playerWon) return "\u{1F3C6}";
-    if (playerLost) return "\u{1F614}";
-    return "\u265F";
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-xl mx-4 w-full max-w-xs text-center">
-        <div className="text-5xl mb-4">{getEmoji()}</div>
 
         <h2
           className={`text-2xl font-bold mb-2 ${
