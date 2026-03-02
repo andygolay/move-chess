@@ -127,7 +127,7 @@ export default function GamePage({ params }: PageParams) {
         const result = await sdk.view({
           function: `${getChessModuleAddress(sdk.network)}::chess_game::get_legal_moves_for_square`,
           type_arguments: [],
-          function_arguments: [gameId, square.toString()],
+          function_arguments: [gameId, square],
         });
 
         const moves = Array.isArray(result)
@@ -192,12 +192,7 @@ export default function GamePage({ params }: PageParams) {
       await sdk.sendTransaction({
         function: `${getChessModuleAddress(sdk.network)}::chess_game::make_move`,
         type_arguments: [],
-        arguments: [
-          gameId,
-          from.toString(),
-          to.toString(),
-          promotion.toString(),
-        ],
+        arguments: [gameId, from, to, promotion],
         title: "Make Move",
         description: "Execute chess move",
         useFeePayer: true,

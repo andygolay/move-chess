@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@moveindustries/movement-design-system";
 import { useMovementSDK } from "@movement-labs/miniapp-sdk";
-import { getChessModuleAddress, CHALLENGE_STATUS_OPEN } from "../../../constants";
+import { getChessModuleAddress, CHALLENGE_STATUS_OPEN, CHALLENGE_STATUS_ACCEPTED } from "../../../constants";
 
 interface Challenge {
   challenge_id: number;
@@ -29,6 +29,56 @@ export default function ChallengeList({ currentAddress }: ChallengeListProps) {
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [acceptingId, setAcceptingId] = useState<number | null>(null);
+  const myChallengeIdsRef = useRef<Set<number>>(new Set());
+
+  // Check if any of user's challenges were accepted and redirect to game
+  const checkMyChallengesAccepted = useCallback(async (currentOpenChallenges: Challenge[]) => {
+    if (!sdk || !currentAddress) return;
+
+    const currentOpenIds = new Set(
+      currentOpenChallenges
+        .filter(c => c.challenger.toLowerCase() === currentAddress.toLowerCase())
+        .map(c => c.challenge_id)
+    );
+
+    // Find challenges that were in our list but are no longer open
+    for (const challengeId of myChallengeIdsRef.current) {
+      if (!currentOpenIds.has(challengeId)) {
+        // Challenge is no longer open - check if it was accepted
+        try {
+          const result = await sdk.view({
+            function: `${getChessModuleAddress(sdk.network)}::chess_lobby::get_challenge`,
+            type_arguments: [],
+            function_arguments: [challengeId.toString()],
+          });
+
+          const challengeData = Array.isArray(result) ? result[0] : result;
+          const status = Number(challengeData?.status ?? -1);
+
+          if (status === CHALLENGE_STATUS_ACCEPTED) {
+            // Get the game ID and redirect
+            const gameResult = await sdk.view({
+              function: `${getChessModuleAddress(sdk.network)}::chess_lobby::get_game_id_for_challenge`,
+              type_arguments: [],
+              function_arguments: [challengeId.toString()],
+            });
+
+            const gameId = Array.isArray(gameResult) ? Number(gameResult[0]) : Number(gameResult);
+            if (gameId > 0) {
+              await sdk.haptic?.({ type: "notification", style: "success" });
+              router.push(`/game/${gameId}`);
+              return;
+            }
+          }
+        } catch (err) {
+          console.error("[ChallengeList] Failed to check challenge status:", err);
+        }
+      }
+    }
+
+    // Update our tracked challenge IDs
+    myChallengeIdsRef.current = currentOpenIds;
+  }, [sdk, currentAddress, router]);
 
   const fetchChallenges = useCallback(async () => {
     if (!sdk) return;
@@ -54,14 +104,19 @@ export default function ChallengeList({ currentAddress }: ChallengeListProps) {
           min_rating: Number(c.min_rating || 0),
           max_rating: Number(c.max_rating || 0),
         }));
-        setChallenges(parsed.filter((c) => c.status === CHALLENGE_STATUS_OPEN));
+        const openChallenges = parsed.filter((c) => c.status === CHALLENGE_STATUS_OPEN);
+
+        // Check if any of our challenges were accepted
+        await checkMyChallengesAccepted(openChallenges);
+
+        setChallenges(openChallenges);
       }
     } catch (err) {
       console.error("[ChallengeList] Failed to fetch:", err);
     } finally {
       setIsLoading(false);
     }
-  }, [sdk]);
+  }, [sdk, checkMyChallengesAccepted]);
 
   useEffect(() => {
     fetchChallenges();
