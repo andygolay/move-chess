@@ -141,17 +141,41 @@ export default function ChallengeList({ currentAddress }: ChallengeListProps) {
         gasLimit: "Sponsored",
       });
 
-      // Query the actual game_id from the accepted challenge
-      const result = await sdk.view({
-        function: `${getChessModuleAddress(sdk.network)}::chess_lobby::get_game_id_for_challenge`,
-        type_arguments: [],
-        function_arguments: [challengeId.toString()],
-      });
+      // Wait for transaction to be confirmed by polling for game_id
+      // Auto-approve may return before transaction is on-chain
+      await new Promise((resolve) => setTimeout(resolve, 2000)); // Initial wait for tx confirmation
 
-      const gameId = Array.isArray(result) ? Number(result[0]) : Number(result);
+      let gameId = 0;
+      for (let attempt = 0; attempt < 15; attempt++) {
+        try {
+          const result = await sdk.view({
+            function: `${getChessModuleAddress(sdk.network)}::chess_lobby::get_game_id_for_challenge`,
+            type_arguments: [],
+            function_arguments: [challengeId.toString()],
+          });
 
-      // Navigate to game page using the actual game_id
-      router.push(`/game/${gameId}`);
+          // Parse result - could be ["6"], [["6"]], "6", or hex "0x6"
+          let rawId = Array.isArray(result) ? result[0] : result;
+          if (Array.isArray(rawId)) rawId = rawId[0];
+
+          // Handle hex string or regular number
+          if (typeof rawId === "string") {
+            gameId = rawId.startsWith("0x") ? parseInt(rawId, 16) : parseInt(rawId, 10);
+          } else {
+            gameId = Number(rawId);
+          }
+
+          if (gameId > 0) break;
+        } catch {
+          // Challenge might not exist yet, keep waiting
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second before retry
+      }
+
+      if (gameId > 0) {
+        router.push(`/game/${gameId}`);
+      }
     } catch (err) {
       console.error("[ChallengeList] Failed to accept:", err);
     } finally {
