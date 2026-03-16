@@ -973,6 +973,12 @@ module chess::chess_game {
                 let j: u8 = 0;
                 while (j < 64) {
                     if (i != j) {
+                        // Skip if destination has friendly piece
+                        let dest_square = get_square(board, j);
+                        if (!is_empty(&dest_square) && dest_square.color == color) {
+                            j = j + 1;
+                            continue
+                        };
                         let is_valid = validate_piece_move(board, i, j, piece.piece_type, color == COLOR_WHITE, castling_rights, en_passant_target);
                         if (is_valid) {
                             // Check if move leaves king in check
@@ -1603,6 +1609,50 @@ module chess::chess_game {
         chess_leaderboard::init_module_for_test(deployer);
     }
 
+    #[test_only]
+    /// Test wrapper to check has_legal_moves with game state
+    public fun test_has_legal_moves(game_id: u64, color: u8): bool acquires GameRegistry {
+        let registry = borrow_global<GameRegistry>(@chess);
+        let game = big_ordered_map::borrow(&registry.games, &game_id);
+        has_legal_moves(&game.board, color, &game.castling_rights, game.en_passant_target)
+    }
+
+    #[test_only]
+    /// Debug version - returns (from, to) of first "legal" move found, or (255, 255) if none
+    public fun test_find_first_legal_move(game_id: u64, color: u8): (u8, u8) acquires GameRegistry {
+        let registry = borrow_global<GameRegistry>(@chess);
+        let game = big_ordered_map::borrow(&registry.games, &game_id);
+
+        let i: u8 = 0;
+        while (i < 64) {
+            let piece = get_square(&game.board, i);
+            if (piece.color == color) {
+                let j: u8 = 0;
+                while (j < 64) {
+                    if (i != j) {
+                        // Skip if destination has friendly piece
+                        let dest_square = get_square(&game.board, j);
+                        if (!is_empty(&dest_square) && dest_square.color == color) {
+                            j = j + 1;
+                            continue
+                        };
+                        let is_valid = validate_piece_move(&game.board, i, j, piece.piece_type, color == COLOR_WHITE, &game.castling_rights, game.en_passant_target);
+                        if (is_valid) {
+                            let mut_board = game.board;
+                            let _ = execute_move(&mut mut_board, i, j, PIECE_QUEEN, game.en_passant_target);
+                            if (!is_king_in_check(&mut_board, color)) {
+                                return (i, j)
+                            };
+                        };
+                    };
+                    j = j + 1;
+                };
+            };
+            i = i + 1;
+        };
+        (255, 255)
+    }
+
     #[test(deployer = @chess)]
     fun test_create_game(deployer: &signer) acquires GameRegistry {
         setup_test(deployer);
@@ -2015,5 +2065,37 @@ module chess::chess_game {
         assert!(game_exists(game1_id), 3);
         assert!(game_exists(game2_id), 4);
         assert!(get_next_game_id() == 3, 5);
+    }
+
+    #[test(deployer = @chess)]
+    /// Test checkmate detection using fool's mate (fastest possible checkmate)
+    /// 1. f3 e5  2. g4 Qh4#
+    fun test_checkmate_fools_mate(deployer: &signer) acquires GameRegistry {
+        setup_test(deployer);
+
+        let white = @0x123;
+        let black = @0x456;
+        let white_signer = &account::create_signer_for_test(white);
+        let black_signer = &account::create_signer_for_test(black);
+        chess_leaderboard::register_player(white_signer);
+        chess_leaderboard::register_player(black_signer);
+
+        let game_id = create_game_internal(white, black, 300, 5);
+
+        // 1. f3 (f2=53 -> f3=45)
+        make_move(white_signer, game_id, 53, 45, 0);
+
+        // 1... e5 (e7=12 -> e5=28)
+        make_move(black_signer, game_id, 12, 28, 0);
+
+        // 2. g4 (g2=54 -> g4=38)
+        make_move(white_signer, game_id, 54, 38, 0);
+
+        // 2... Qh4# (Qd8=3 -> h4=39) - CHECKMATE!
+        make_move(black_signer, game_id, 3, 39, 0);
+
+        // Verify checkmate
+        let (_, _, _, _, status, _, _, _, _, _, _, _) = get_game_state(game_id);
+        assert!(status == STATUS_BLACK_WIN_CHECKMATE, 100 + (status as u64));
     }
 }
